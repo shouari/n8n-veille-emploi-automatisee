@@ -1,0 +1,390 @@
+{
+  "name": "Veille emploi automatisée",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        },
+        "misfirePolicy": "coalesce_owner"
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -448,
+        -112
+      ],
+      "id": "389ae684-b6d6-434d-a043-75da1e851195",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        -112
+      ],
+      "id": "42b8fbfe-abf3-4a96-ae25-73fb6b407b1b",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "https://jsearch.p.rapidapi.com/search-v2",
+        "sendQuery": true,
+        "specifyQuery": "=keypair",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "num_pages",
+              "value": "1"
+            },
+            {
+              "name": "date_posted",
+              "value": "month"
+            },
+            {
+              "name": "country",
+              "value": "ca"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-host",
+              "value": "jsearch.p.rapidapi.com"
+            },
+            {
+              "name": "x-rapidapi-key",
+              "value": "REMPLACER_PAR_VOTRE_CLE_RAPIDAPI"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        -256
+      ],
+      "id": "959ab131-9d76-4a57-a5a1-0d9999d5cf17",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REMPLACER_PAR_URL_DE_VOTRE_GOOGLE_SHEET",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Veille emploi",
+          "cachedResultUrl": "REMPLACER_PAR_URL_DE_VOTRE_GOOGLE_SHEET"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "job_id": "={{ $('Scoring').item.json.job_id }}",
+            "title": "={{ $('Scoring').item.json.title }}",
+            "company": "={{ $('Scoring').item.json.company }}",
+            "location": "={{ $('Scoring').item.json.location }}",
+            "salaire": "={{ $('Scoring').item.json.salaire }}",
+            "score": "={{ $('Scoring').item.json.score }}",
+            "url": "={{ $('Scoring').item.json.url }}",
+            "date_ajout": "={{ $now }}",
+            "application_status": "non lue"
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "job_id", "displayName": "job_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "title", "displayName": "title", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "company", "displayName": "company", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "location", "displayName": "location", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "salaire", "displayName": "salaire", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "score", "displayName": "score", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "url", "displayName": "url", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "date_ajout", "displayName": "date_ajout", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "application_status", "displayName": "application_status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        752,
+        -160
+      ],
+      "id": "9c08f7b6-9690-4f7d-9147-6801a0c38d99",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# Modifiez cette liste selon le poste et la région recherchés.\n# Chaque ligne est une requête de recherche distincte, envoyée séparément à l'API.\nqueries = [\n    \"coordonnateur opérations Laval\",\n    \"amélioration continue Québec\",\n    \"analyste processus Couronne Nord\",\n    \"gestion des opérations Laval\",\n    \"responsable qualité Boisbriand\",\n]\n\nreturn [{\"json\": {\"query\": q}} for q in queries]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -112
+      ],
+      "id": "8f3ee087-062a-4647-ab2b-7e8004790c67",
+      "name": "Liste Queries"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# Ajustez ces listes selon votre profil et votre marché cible.\nresults = []\n\nMOTS_CLES_FORTS = [\"amélioration continue\", \"lean\", \"kaizen\", \"structuration\", \"planification des opérations\", \"gestion des opérations\"]\nMOTS_CLES_TITRE_SENIOR = [\"directeur\", \"responsable production\", \"responsable qualité\", \"responsable opérations\", \"chef\", \"gestionnaire\"]\nMOTS_EXCLUSION = [\n    \"junior\", \"ventes\", \"communications\", \"rh, paie\", \"paie et opérations\",\n    \"succursale\", \"bâtiment et services\", \"immobilier\", \"funéraire\",\n    \"magasin\", \"boutique\", \"détail\", \"adjoint\", \"assistant manager\", \"mode\"\n]\nDOMAINES_EXCLUS = [\"bebee.com\"]\nVILLES_CIBLES = [\"laval\", \"boisbriand\", \"blainville\", \"terrebonne\", \"mirabel\", \"saint-eustache\"]\nSALAIRE_MIN = 75000\n\nfor item in _items:\n    jobs = item[\"json\"].get(\"data\", {}).get(\"jobs\", [])\n    for job in jobs:\n        url_offre = (job.get(\"job_apply_link\") or \"\").lower()\n\n        # Exclusion par domaine — sites avec candidature payante ou peu fiables\n        if any(domaine in url_offre for domaine in DOMAINES_EXCLUS):\n            continue\n\n        titre = (job.get(\"job_title\") or \"\").lower()\n        desc = (job.get(\"job_description\") or \"\").lower()\n        ville = (job.get(\"job_city\") or \"\").lower()\n        salaire_min = job.get(\"job_min_salary\") or 0\n\n        # Exclusion dure — si un mot d'exclusion apparaît dans le titre, on rejette direct\n        if any(mot in titre for mot in MOTS_EXCLUSION):\n            continue\n\n        score = 0\n        if any(mot in titre for mot in MOTS_CLES_TITRE_SENIOR):\n            score += 3\n        if any(mot in titre or mot in desc for mot in MOTS_CLES_FORTS):\n            score += 2\n        if ville in VILLES_CIBLES:\n            score += 1\n        if salaire_min and salaire_min >= SALAIRE_MIN:\n            score += 3\n\n        if score >= 4:\n            results.append({\n                \"job_id\": job.get(\"job_apply_link\"),  # URL utilisée comme identifiant stable, pas l'ID JSearch (instable d'une requête à l'autre)\n                \"title\": job.get(\"job_title\"),\n                \"company\": job.get(\"employer_name\"),\n                \"location\": job.get(\"job_city\"),\n                \"salaire\": salaire_min,\n                \"score\": score,\n                \"url\": job.get(\"job_apply_link\"),\n            })\n\nreturn [{\"json\": r} for r in results]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -256
+      ],
+      "id": "fe2735a2-8e28-4254-8571-9201a5300cfd",
+      "name": "Scoring",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "job_id",
+              "field2": "job_id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.compareDatasets",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        -32
+      ],
+      "id": "047b8f01-f5d5-49ed-acc1-197e384a4f44",
+      "name": "Compare Datasets"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REMPLACER_PAR_URL_DE_VOTRE_GOOGLE_SHEET",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Veille emploi",
+          "cachedResultUrl": "REMPLACER_PAR_URL_DE_VOTRE_GOOGLE_SHEET"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        80
+      ],
+      "id": "85ac21b8-c000-44bd-94d7-c326afede982",
+      "name": "Get row(s) in sheet",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "if not _items:\n    return [{\"json\": {\"skip\": True}}]\n\nlignes = \"\"\nfor item in _items:\n    job = item[\"json\"]\n    lignes += f\"\"\"\n    <tr>\n        <td>{job.get('title')}</td>\n        <td>{job.get('company')}</td>\n        <td>{job.get('location')}</td>\n        <td>{job.get('score')}</td>\n        <td><a href=\"{job.get('url')}\">Voir l'offre</a></td>\n    </tr>\n    \"\"\"\n\nhtml = f\"\"\"\n<h2>Nouvelles offres — {len(_items)} trouvée(s)</h2>\n<table border=\"1\" cellpadding=\"6\" style=\"border-collapse:collapse\">\n<tr><th>Poste</th><th>Entreprise</th><th>Ville</th><th>Score</th><th>Lien</th></tr>\n{lignes}\n</table>\n\"\"\"\n\nreturn [{\"json\": {\"html_body\": html, \"count\": len(_items), \"skip\": False}}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        160
+      ],
+      "id": "5e3dee1b-840c-4e9d-8788-41c18689b1cd",
+      "name": "Code in Python"
+    },
+    {
+      "parameters": {
+        "sendTo": "REMPLACER_PAR_VOTRE_EMAIL",
+        "subject": "=Veille emploi — {{ $json.count }} nouvelle(s) offre(s)",
+        "message": "={{ $json.html_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        160
+      ],
+      "id": "ff3503bc-eae6-4e79-972b-213386ad7777",
+      "name": "Send a message",
+      "webhookId": "e372db92-eaa7-4889-ba2e-40e2e457fcd8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a1444f34-ae51-46a8-ae15-4d1f87781db8",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        160
+      ],
+      "id": "bd27acd2-b779-4508-92ba-8e65c3e7de1c",
+      "name": "If"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          { "node": "Liste Queries", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          { "node": "Get row(s) in sheet", "type": "main", "index": 0 },
+          { "node": "Compare Datasets", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "HTTP Request", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          { "node": "Scoring", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Liste Queries": {
+      "main": [
+        [
+          { "node": "Loop Over Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Scoring": {
+      "main": [
+        [
+          { "node": "Loop Over Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Compare Datasets": {
+      "main": [
+        [
+          { "node": "Append row in sheet", "type": "main", "index": 0 },
+          { "node": "Code in Python", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          { "node": "Compare Datasets", "type": "main", "index": 1 }
+        ]
+      ]
+    },
+    "Code in Python": {
+      "main": [
+        [
+          { "node": "If", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          { "node": "Send a message", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
